@@ -1,27 +1,39 @@
+import { api } from "@/lib/axios";
+
 export type TimetableEntry = {
     id: string;
-    course_id?: string;
-    class_id?: string;
-    division_id?: string;
     period_no: number;
     subject: string;
-    subject_id?: string;
-    teacher_id?: string;
-    teacher_name?: string;
+    subject_id: string;
+    teacher_id: string | null;
+    teacher_name: string;
     status: "present" | "leave" | "permission";
     is_substituted: boolean;
-    substitution?: {
-        substitute_teacher_id: string;
-        substitute_teacher_name: string;
-        original_teacher_id: string;
+    substitution: {
+        subject: string | null;
+        type: string | null;
+        substitute_teacher_id: string | null;
+        substitute_teacher_name: string | null;
     };
 };
 
+export type DayData = {
+    date: string;
+    class_id: string;
+    division_id: string;
+    class_name: string;
+    entries: TimetableEntry[];
+};
+
 export type TeacherApiEntry = {
-    teacher_id: string;
-    name: string;
+    id: string;
+    full_name: string;
     email: string;
-    subjects: Array<{ subject_name: string } | string>;
+    position_name: string;
+    subjects: {
+        subject_id: string;
+        subject_name: string;
+    }[];
 };
 
 export type SubstitutionPayload = {
@@ -31,86 +43,97 @@ export type SubstitutionPayload = {
     division_id: string;
     period_no: number;
     substitution_date: string;
-    subject_id?: string;
+    subject_id: string;
     type: string;
 };
 
 export type LeavePayload = {
-    teacher_id: string;
+    from_id: string;
     start_date: string;
     end_date: string;
-    leave_type: "full-day" | "period-wise";
-    request_category: "leave" | "permission";
-    periods?: number[];
 };
 
 export const fetchTimetable = async () => {
-    // Mock data
-    const entries: TimetableEntry[] = [
-        { id: "1", period_no: 1, subject: "Math", teacher_id: "t1", teacher_name: "John Doe", status: "present", is_substituted: false },
-        { id: "2", period_no: 2, subject: "Science", teacher_id: "t2", teacher_name: "Jane Smith", status: "present", is_substituted: false },
-    ];
-    const entries2: TimetableEntry[] = [
-        { id: "3", period_no: 1, subject: "English", teacher_id: "t3", teacher_name: "Alice Johnson", status: "present", is_substituted: false },
-        { id: "4", period_no: 2, subject: "Math", teacher_id: "t1", teacher_name: "John Doe", status: "present", is_substituted: false },
-    ];
-
-    type DayData = {
-        class_id: string;
-        division_id: string;
-        class_name: string;
-        date: string;
-        entries: TimetableEntry[];
-    };
-
-    const todayData: DayData[] = [
-        {
-            class_id: "class-1",
-            division_id: "div-1",
-            class_name: "Class 10A",
-            date: new Date().toISOString(),
-            entries: entries
-        },
-        {
-            class_id: "class-2",
-            division_id: "div-2",
-            class_name: "Class 9B",
-            date: new Date().toISOString(),
-            entries: entries2
-        }
-    ];
-
-    return {
+    const response = await api.get<{
+        success: boolean;
+        message: string;
         data: {
-            today: todayData,
-            tomorrow: [] as DayData[]
+            today: DayData[];
+            tomorrow: DayData[];
         }
-    };
+    }>("/api/timetable/today");
+
+    return response.data;
 };
 
 export const fetchTeachers = async () => {
-    // Mock data
-    return {
-        data: {
-            teachers: [
-                { teacher_id: "t1", name: "John Doe", email: "john@example.com", subjects: ["Math"] },
-                { teacher_id: "t2", name: "Jane Smith", email: "jane@example.com", subjects: [{ subject_name: "Science" }] },
-                { teacher_id: "t3", name: "Alice Johnson", email: "alice@example.com", subjects: ["English"] },
-            ] as TeacherApiEntry[]
+    const response = await api.get<{
+        success: boolean;
+        message: string;
+        data: TeacherApiEntry[];
+    }>("/api/users");
+
+    // Filter for Teachers if necessary, or just return all and filter in UI
+    return response.data;
+};
+
+export const saveSubstitutions = async (payload: SubstitutionPayload[]) => {
+    // Send substitutions sequentially or in parallel to avoid "Cannot coerce..." error if backend expects single object
+    const promises = payload.map(sub => api.post("/api/substitution", sub));
+    const responses = await Promise.all(promises);
+    return responses.map(r => r.data);
+};
+
+export const fetchAISubstituteRecommendations = async (date: string, onUpdate?: (text: string) => void) => {
+    const response = await api.get(`/api/substitution/generation?date=${date}`, {
+        responseType: 'text',
+        onDownloadProgress: (progressEvent) => {
+            const chunk = progressEvent.event.target.response;
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    try {
+                        const jsonStr = line.replace("data: ", "").trim();
+                        if (jsonStr === "{}") continue;
+                        const parsed = JSON.parse(jsonStr);
+
+                        if (parsed.type === "text" && onUpdate) {
+                            onUpdate(parsed.data.text);
+                        }
+                    } catch (e) {
+                        // Ignore partial JSON
+                    }
+                }
+            }
+        },
+    });
+
+    // The final result is usually sent as a 'result' type in the stream.
+    // Axios response.data might contain the whole stream text.
+    // We need to extract the final result object.
+    const chunk = response.data;
+    const lines = chunk.split("\n");
+    for (const line of lines) {
+        if (line.startsWith("data: ")) {
+            try {
+                const jsonStr = line.replace("data: ", "").trim();
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.type === "result") {
+                    return { data: parsed.data };
+                }
+            } catch (e) {
+                // Ignore
+            }
         }
-    };
-};
+    }
 
-export const saveSubstitutions = async (payload: any) => {
-    console.log("Saving substitutions:", payload);
-    return { success: true };
-};
-
-export const fetchAISubstituteRecommendations = async (date: string) => {
-    return { data: { recommendations: [] } };
+    return response.data;
 };
 
 export const markLeave = async (payload: LeavePayload) => {
-    console.log("Marking leave:", payload);
-    return { success: true, message: "Leave marked successfully" };
+
+
+    const response = await api.post("/api/leaves", payload);
+    return response.data;
 };

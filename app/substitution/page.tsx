@@ -32,9 +32,7 @@ import type {
     SubstitutionPayload,
     TeacherApiEntry,
 } from "./api";
-import SwapModal from "./SwapModal";
 import LeaveModal from "./LeaveModal";
-import PermissionModal from "./PermissionModal";
 
 interface DayTimetable {
     date: string;
@@ -65,7 +63,6 @@ type TimetableEntriesState = Record<DayKey, Record<string, Record<string, Substi
 export default function LeaveManagementPage() {
     const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">("today");
     const [showLeaveModal, setShowLeaveModal] = useState(false);
-    const [showPermissionModal, setShowPermissionModal] = useState(false);
     const [isAIMode, setIsAIMode] = useState(false);
     const [timetableEntries, setTimetableEntries] = useState<TimetableEntriesState>({
         today: {},
@@ -79,7 +76,7 @@ export default function LeaveManagementPage() {
     const [teachers, setTeachers] = useState<Array<{ id: string; name: string; email: string; subjects: string[] }>>([]);
     const [aiSuggestedTeachers, setAiSuggestedTeachers] = useState<Array<{ teacher_id: string; teacher_name: string; subject: string; email?: string }>>([]);
     const [savingSubstitutions, setSavingSubstitutions] = useState(false);
-    const [showSwapModal, setShowSwapModal] = useState(false);
+    const [aiMessages, setAiMessages] = useState<string[]>([]);
 
     // Fetch timetable data from API
     const fetchTimetableData = async () => {
@@ -176,16 +173,14 @@ export default function LeaveManagementPage() {
     const fetchTeachersData = async () => {
         try {
             const response = await fetchTeachers();
-            const teachersData = response.data?.teachers || [];
+            const teachersData = response.data || [];
 
             setTeachers(
                 teachersData.map((teacher: TeacherApiEntry) => ({
-                    id: teacher.teacher_id,
-                    name: teacher.name,
+                    id: teacher.id,
+                    name: teacher.full_name,
                     email: teacher.email,
-                    subjects: teacher.subjects.map((s) =>
-                        typeof s === 'string' ? s : s.subject_name
-                    )
+                    subjects: teacher.subjects.map(s => s.subject_name)
                 }))
             );
         } catch (err) {
@@ -312,7 +307,8 @@ export default function LeaveManagementPage() {
         fetchTimetableData();
     };
 
-    function getInitials(name: string) {
+    function getInitials(name: string | null | undefined) {
+        if (!name) return "?";
         const names = name.split(" ");
         if (names.length === 1) return names[0].charAt(0);
         return names[0].charAt(0) + names[names.length - 1].charAt(0);
@@ -452,7 +448,8 @@ export default function LeaveManagementPage() {
                 !sub.class_id ||
                 !sub.division_id ||
                 !sub.period_no ||
-                !sub.substitution_date
+                !sub.substitution_date ||
+                !sub.subject_id
             );
 
             if (invalidSubs.length > 0) {
@@ -526,7 +523,16 @@ export default function LeaveManagementPage() {
             }
 
             // Call AI API
-            const response = await fetchAISubstituteRecommendations(dateStr);
+            setAiMessages(["Initializing request..."]);
+
+            // Call AI API with streaming callback
+            const response = await fetchAISubstituteRecommendations(dateStr, (text) => {
+                setAiMessages(prev => {
+                    // Avoid duplicate messages if they happen too fast
+                    if (prev[prev.length - 1] === text) return prev;
+                    return [...prev, text];
+                });
+            });
             // Process recommendations
             const recommendations = response?.data?.recommendations || [];
 
@@ -659,23 +665,7 @@ export default function LeaveManagementPage() {
                                             Mark Leave
                                         </Button>
 
-                                        <Button
-                                            variant="outline"
-                                            className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 dark:hover:bg-blue-900/20"
-                                            onClick={() => setShowSwapModal(true)}
-                                        >
-                                            <ArrowLeftRight className="h-4 w-4 mr-2" />
-                                            Swap
-                                        </Button>
 
-                                        <Button
-                                            variant="outline"
-                                            className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 dark:hover:bg-purple-900/20"
-                                            onClick={() => setShowPermissionModal(true)}
-                                        >
-                                            <Clock className="h-4 w-4 mr-2" />
-                                            Permissions
-                                        </Button>
 
                                         <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-2 hidden md:block"></div>
 
@@ -794,12 +784,22 @@ export default function LeaveManagementPage() {
                                             <tbody>
                                                 {classes.map((classItem) => (
                                                     <tr key={classItem.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                                        <td className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-slate-800 sticky left-0 z-20 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-800/80 shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
+                                                        <td key={`${classItem.id}-name`} className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-slate-800 sticky left-0 z-20 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-800/80 shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
                                                             <div className="font-semibold text-slate-900 dark:text-slate-100">{classItem.name}</div>
                                                         </td>
                                                         {periods.map((period) => (
                                                             <td
                                                                 key={`cell-${classItem.id}-${period.id}`}
+                                                                onDragOver={(e) => e.preventDefault()}
+                                                                onDrop={(e) => {
+                                                                    e.preventDefault();
+                                                                    try {
+                                                                        const teacherData = JSON.parse(e.dataTransfer.getData("teacher"));
+                                                                        handleDrop(classItem.id, period.id.toString(), teacherData);
+                                                                    } catch (err) {
+                                                                        console.error("Failed to parse teacher data", err);
+                                                                    }
+                                                                }}
                                                                 className="px-2 py-2 border-b border-r border-slate-100 dark:border-slate-800/50 bg-white dark:bg-slate-900 group-hover:bg-slate-50/30 dark:group-hover:bg-slate-800/30 transition-colors relative"
                                                             >
                                                                 {(() => {
@@ -817,7 +817,7 @@ export default function LeaveManagementPage() {
                                                                                         <button
                                                                                             onClick={(e) => {
                                                                                                 e.stopPropagation();
-                                                                                                handleClearSubstitution(selectedDate, classItem.id, period.id.toFixed());
+                                                                                                handleClearSubstitution(selectedDate, classItem.id, period.id.toString());
                                                                                             }}
                                                                                             className="opacity-0 group-hover/cell:opacity-100 p-1 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-all"
                                                                                         >
@@ -835,6 +835,26 @@ export default function LeaveManagementPage() {
                                                                         )
                                                                     }
 
+                                                                    if (entry && entry.is_substituted && !substitute) {
+                                                                        return (
+                                                                            <div className="relative group/cell">
+                                                                                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 shadow-sm transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer group-hover/cell:border-emerald-200 dark:group-hover/cell:border-emerald-800">
+                                                                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded">
+                                                                                            Substituted
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                                                                                        {entry.substitution.substitute_teacher_name || "Unknown"}
+                                                                                    </div>
+                                                                                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                                                                        {entry.substitution.subject || entry.subject || "No Subject"}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    }
+
                                                                     if (!entry) {
                                                                         return (
                                                                             <div className="h-full min-h-[80px] flex items-center justify-center">
@@ -850,7 +870,7 @@ export default function LeaveManagementPage() {
                                                                         <div className="relative group/cell h-full">
                                                                             <div className={clsx(
                                                                                 "h-full min-h-[80px] p-3 rounded-xl border transition-all hover:shadow-md cursor-pointer flex flex-col justify-between",
-                                                                                isLeave // || isPermission
+                                                                                isLeave
                                                                                     ? "bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20"
                                                                                     : isPermission
                                                                                         ? "bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/20"
@@ -909,44 +929,124 @@ export default function LeaveManagementPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-                                {teachers.map((teacher) => (
-                                    <div
-                                        key={teacher.id}
-                                        className="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-md cursor-grab active:cursor-grabbing transition-all"
-                                        draggable
-                                        onDragStart={(e) => {
-                                            e.dataTransfer.setData(
-                                                "teacher",
-                                                JSON.stringify({
-                                                    id: teacher.id,
-                                                    name: teacher.name,
-                                                    subject: teacher.subjects[0] || "General",
-                                                    hasMultipleSubjects: teacher.subjects.length > 1
-                                                })
-                                            );
-                                        }}
-                                    >
-                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-110 transition-transform">
-                                            {getInitials(teacher.name)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{teacher.name}</p>
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {teacher.subjects.slice(0, 2).map((sub, i) => (
-                                                    <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                                                        {sub}
-                                                    </span>
-                                                ))}
-                                                {teacher.subjects.length > 2 && (
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 border border-slate-200 dark:border-slate-600">
-                                                        +{teacher.subjects.length - 2}
-                                                    </span>
-                                                )}
+                            <CardContent className="flex-1 overflow-hidden p-4">
+                                {isAIMode ? (
+                                    <div className="flex flex-col items-start justify-end h-full w-full overflow-hidden no-scrollbar">
+                                        <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+                                            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 via-blue-500 to-emerald-500 rounded-full flex items-center justify-center">
+                                                <div className="relative animate-spin-slow">
+                                                    <Sparkle className="w-4 h-4 text-white" />
+                                                </div>
                                             </div>
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI is Working</h3>
+                                        </div>
+
+                                        <div className="space-y-2 w-full flex flex-col justify-end overflow-y-auto pr-1 no-scrollbar">
+                                            {aiMessages.map((msg, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`text-xs flex items-start gap-2 transition-all duration-300 ${idx === aiMessages.length - 1
+                                                        ? "text-slate-900 dark:text-white font-medium opacity-100"
+                                                        : "text-slate-500 dark:text-slate-400 opacity-60"
+                                                        }`}
+                                                >
+                                                    {idx === aiMessages.length - 1 && (
+                                                        <Loader2 className="h-3 w-3 animate-spin text-emerald-500 flex-shrink-0 mt-0.5" />
+                                                    )}
+                                                    <span className="truncate">{msg}</span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
+                                ) : (
+                                    <div className="h-full overflow-y-auto space-y-6 pr-2 ">
+                                        {/* AI Suggested Teachers */}
+                                        {aiSuggestedTeachers.length > 0 && (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1 px-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+                                                        <Sparkle className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">AI Recommended</span>
+                                                    </div>
+                                                </div>
+                                                {aiSuggestedTeachers.map((teacher, idx) => (
+                                                    <div
+                                                        key={`ai-${teacher.teacher_id}-${idx}`}
+                                                        className="group flex items-center gap-3 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md cursor-grab active:cursor-grabbing transition-all relative overflow-hidden"
+                                                        draggable
+                                                        onDragStart={(e) => {
+                                                            e.dataTransfer.setData(
+                                                                "teacher",
+                                                                JSON.stringify({
+                                                                    id: teacher.teacher_id,
+                                                                    name: teacher.teacher_name,
+                                                                    subject: teacher.subject,
+                                                                    hasMultipleSubjects: false
+                                                                })
+                                                            );
+                                                        }}
+                                                    >
+                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-110 transition-transform">
+                                                            {getInitials(teacher.teacher_name)}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{teacher.teacher_name}</p>
+                                                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">{teacher.subject}</p>
+                                                        </div>
+                                                        <Sparkle className="absolute -right-1 -top-1 h-8 w-8 text-emerald-500/10 rotate-12" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* All Teachers */}
+                                        <div className="space-y-3">
+                                            {aiSuggestedTeachers.length > 0 && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">All Teachers</span>
+                                                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
+                                                </div>
+                                            )}
+                                            {teachers.map((teacher) => (
+                                                <div
+                                                    key={teacher.id}
+                                                    className="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-md cursor-grab active:cursor-grabbing transition-all"
+                                                    draggable
+                                                    onDragStart={(e) => {
+                                                        e.dataTransfer.setData(
+                                                            "teacher",
+                                                            JSON.stringify({
+                                                                id: teacher.id,
+                                                                name: teacher.name,
+                                                                subject: teacher.subjects[0] || "General",
+                                                                hasMultipleSubjects: teacher.subjects.length > 1
+                                                            })
+                                                        );
+                                                    }}
+                                                >
+                                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-110 transition-transform">
+                                                        {getInitials(teacher.name)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{teacher.name}</p>
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {teacher.subjects.slice(0, 2).map((sub, i) => (
+                                                                <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                                                                    {sub}
+                                                                </span>
+                                                            ))}
+                                                            {teacher.subjects.length > 2 && (
+                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 border border-slate-200 dark:border-slate-600">
+                                                                    +{teacher.subjects.length - 2}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -956,37 +1056,7 @@ export default function LeaveManagementPage() {
                 <LeaveModal
                     open={showLeaveModal}
                     onClose={() => setShowLeaveModal(false)}
-                    periods={periods}
                     onSuccess={handleLeaveSuccess}
-                />
-
-                <PermissionModal
-                    open={showPermissionModal}
-                    onClose={() => setShowPermissionModal(false)}
-                    periods={periods}
-                    onSuccess={handleLeaveSuccess}
-                />
-
-                <SwapModal
-                    open={showSwapModal}
-                    onClose={() => setShowSwapModal(false)}
-                    classes={classes}
-                    periods={periods}
-                    selectedDate={selectedDate}
-                    getTimetableEntry={getTimetableEntry}
-                    timetableData={timetableData.map(c => ({
-                        class_id: c.class_id,
-                        division_id: c.division_id,
-                        today: {
-                            date: c.today.date,
-                            entries: c.today.entries
-                        },
-                        tomorrow: {
-                            date: c.tomorrow.date,
-                            entries: c.tomorrow.entries
-                        }
-                    }))}
-                    onSwapSuccess={handleLeaveSuccess}
                 />
             </div>
         </MyClassBackground>

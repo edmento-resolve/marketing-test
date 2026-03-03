@@ -31,21 +31,17 @@ interface PeriodItem {
 interface LeaveModalProps {
     open: boolean;
     onClose: () => void;
-    periods: PeriodItem[];
     onSuccess?: () => void;
 }
 
 export default function LeaveModal({
     open,
     onClose,
-    periods,
     onSuccess,
 }: LeaveModalProps) {
     const [selectedTeacher, setSelectedTeacher] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
-    const [leaveType, setLeaveType] = useState<"full-day" | "period-wise">("full-day");
-    const [selectedPeriods, setSelectedPeriods] = useState<number[]>([]);
     const [teachers, setTeachers] = useState<TeacherApiEntry[]>([]);
     const [loadingTeachers, setLoadingTeachers] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -61,7 +57,7 @@ export default function LeaveModal({
         try {
             setLoadingTeachers(true);
             const response = await fetchTeachers();
-            const teachersData = response.data?.teachers || [];
+            const teachersData = response.data || [];
             setTeachers(teachersData);
         } catch (error) {
             console.error('Error fetching teachers:', error);
@@ -72,22 +68,9 @@ export default function LeaveModal({
         }
     };
 
-    const handlePeriodToggle = (periodId: number) => {
-        setSelectedPeriods(prev =>
-            prev.includes(periodId)
-                ? prev.filter(id => id !== periodId)
-                : [...prev, periodId]
-        );
-    };
-
     const handleSubmit = async () => {
         if (!selectedTeacher || !startDate || !endDate) {
             toast.error("Please fill in all required fields");
-            return;
-        }
-
-        if (leaveType === "period-wise" && selectedPeriods.length === 0) {
-            toast.error("Please select at least one period");
             return;
         }
 
@@ -100,12 +83,9 @@ export default function LeaveModal({
         setSubmitting(true);
         try {
             const payload: LeavePayload = {
-                teacher_id: selectedTeacher,
+                from_id: selectedTeacher,
                 start_date: startDate,
                 end_date: endDate,
-                leave_type: leaveType,
-                request_category: "leave",
-                ...(leaveType === "period-wise" && { periods: selectedPeriods }),
             };
 
             await markLeave(payload);
@@ -116,8 +96,6 @@ export default function LeaveModal({
             setSelectedTeacher("");
             setStartDate("");
             setEndDate("");
-            setLeaveType("full-day");
-            setSelectedPeriods([]);
 
             // Call success callback if provided
             if (onSuccess) {
@@ -144,12 +122,10 @@ export default function LeaveModal({
         setSelectedTeacher("");
         setStartDate("");
         setEndDate("");
-        setLeaveType("full-day");
-        setSelectedPeriods([]);
         onClose();
     };
 
-    const selectedTeacherData = teachers.find(t => t.teacher_id === selectedTeacher);
+    const selectedTeacherData = teachers.find(t => t.id === selectedTeacher);
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
@@ -196,12 +172,12 @@ export default function LeaveModal({
                                     <SelectContent>
                                         {teachers.map((teacher) => (
                                             <SelectItem
-                                                key={teacher.teacher_id}
-                                                value={teacher.teacher_id}
+                                                key={teacher.id}
+                                                value={teacher.id}
                                                 className="cursor-pointer py-3"
                                             >
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium text-slate-900 dark:text-slate-200">{teacher.name}</span>
+                                                    <span className="font-medium text-slate-900 dark:text-slate-200">{teacher.full_name}</span>
                                                     <span className="text-xs text-slate-500">{teacher.email}</span>
                                                 </div>
                                             </SelectItem>
@@ -240,89 +216,21 @@ export default function LeaveModal({
                             </div>
                         </div>
 
-                        {/* Leave Type */}
-                        <div className="space-y-3">
-                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-slate-400" />
-                                Leave Duration
-                            </Label>
-                            <div className="flex gap-4 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setLeaveType("full-day");
-                                        setSelectedPeriods([]);
-                                    }}
-                                    className={clsx(
-                                        "flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200",
-                                        leaveType === "full-day"
-                                            ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
-                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                    )}
-                                >
-                                    Full Day
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setLeaveType("period-wise")}
-                                    className={clsx(
-                                        "flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200",
-                                        leaveType === "period-wise"
-                                            ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
-                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                    )}
-                                >
-                                    Specific Periods
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Period Selection */}
-                        {leaveType === "period-wise" && (
-                            <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
-                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                    Select Periods
-                                </Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {periods
-                                        .filter((period) => period?.id != null)
-                                        .map((period) => (
-                                            <div
-                                                key={period.id}
-                                                className={clsx(
-                                                    "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer",
-                                                    selectedPeriods.includes(period.id)
-                                                        ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30"
-                                                        : "bg-white dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                                                )}
-                                                onClick={() => handlePeriodToggle(period.id)}
-                                            >
-                                                <Checkbox
-                                                    id={`period-${period.id}`}
-                                                    checked={selectedPeriods.includes(period.id)}
-                                                    onCheckedChange={() => handlePeriodToggle(period.id)}
-                                                    className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
-                                                />
-                                                <Label htmlFor={`period-${period.id}`} className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300 flex-1">
-                                                    {period.name}
-                                                </Label>
-                                            </div>
-                                        ))}
-                                </div>
-                            </div>
-                        )}
+                        {/* Leave duration section removed as per requirement */}
 
                         {/* Summary Card */}
                         {selectedTeacherData && (
                             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-start gap-4">
                                 <div className="h-10 w-10 shrink-0 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold">
-                                    {selectedTeacherData.name.charAt(0)}
+                                    {selectedTeacherData.full_name.charAt(0)}
                                 </div>
                                 <div className="space-y-0.5">
-                                    <p className="font-semibold text-sm text-slate-900 dark:text-white">{selectedTeacherData.name}</p>
+                                    <p className="font-semibold text-sm text-slate-900 dark:text-white">{selectedTeacherData.full_name}</p>
                                     <p className="text-xs text-slate-500">{selectedTeacherData.email}</p>
                                     <p className="text-xs text-slate-400 mt-1 line-clamp-1">
-                                        {selectedTeacherData.subjects.map(s => typeof s === 'string' ? s : s.subject_name).join(', ')}
+                                        {selectedTeacherData.subjects.length > 0
+                                            ? selectedTeacherData.subjects.map(s => s.subject_name).join(', ')
+                                            : selectedTeacherData.position_name}
                                     </p>
                                 </div>
                             </div>
@@ -346,7 +254,6 @@ export default function LeaveModal({
                                 !selectedTeacher ||
                                 !startDate ||
                                 !endDate ||
-                                (leaveType === "period-wise" && selectedPeriods.length === 0) ||
                                 submitting
                             }
                             className="flex-[2] h-12 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg shadow-red-500/20"

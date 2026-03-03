@@ -13,7 +13,7 @@ export default function Home() {
           </Link>
 
           <Link
-            href="/question-paper"
+            href="/question-paper/new"
             className="group relative inline-flex h-16 items-center justify-center overflow-hidden rounded-full bg-fuchsia-600 px-10 font-medium text-white shadow-lg shadow-fuchsia-500/30 transition-all hover:scale-105 hover:bg-fuchsia-500 hover:shadow-fuchsia-500/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
           >
             <span className="text-lg">Try Question Paper</span>
