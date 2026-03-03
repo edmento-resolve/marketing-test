@@ -38,7 +38,7 @@ export default function PrincipalLayout({ children }: { children: React.ReactNod
                 {/* Main Content Area */}
                 <main className="mt-24 h-[calc(100vh-96px)] pr-6 pb-6 overflow-hidden">
                     <div className="w-full h-full mx-auto">
-                        <div className="w-full h-full">
+                        <div className="w-full h-full overflow-y-auto">
                             {children}
                         </div>
                     </div>
