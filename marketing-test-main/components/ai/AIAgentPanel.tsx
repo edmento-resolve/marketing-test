@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Bot, User, Trash2, Command, Search, Loader2 } from 'lucide-react';
+import { X, Send, Sparkles, Bot, User, Trash2, Command, Search } from 'lucide-react';
 import { useAI } from '@/context/AIContext';
-import { schoolData } from '@/data/school-data';
+import { suggestedPrompts } from '@/data/prompts';
 import { Button } from '@/components/ui/button';
 
 interface Message {
@@ -15,9 +15,27 @@ interface Message {
 export default function AIAgentPanel() {
     const { isAgentOpen, closeAgent } = useAI();
     const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: "Hello Principal! I'm your Edmento AI Assistant. I can help you analyze school data, performance trends, and syllabus insights. What would you like to know?" }
+        {
+            role: 'assistant',
+            content: (
+                <div className="space-y-4">
+                    <p>Hello Principal! I'm your Edmento AI Assistant. I can help you analyze school data, performance trends, and syllabus insights. What would you like to know?</p>
+                    <div className="space-y-2">
+                        {suggestedPrompts.slice(0, 4).map((p, i) => (
+                            <button
+                                key={i}
+                                onClick={() => { setInput(p); handleSend(p); }}
+                                className="w-full text-left px-4 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all flex items-center gap-2"
+                            >
+                                <Search className="h-3 w-3" />
+                                {p}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )
+        }
     ]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -31,36 +49,52 @@ export default function AIAgentPanel() {
 
     const handleSend = async (text?: string) => {
         const queryText = text || input;
-        if (!queryText.trim() || isLoading) return;
+        if (!queryText.trim()) return;
 
         const userMessage: Message = { role: 'user', content: queryText };
-        setMessages(prev => [...prev, userMessage]);
-        if (!text) setInput('');
-        setIsLoading(true);
+        const currentMessages = [...messages, userMessage];
 
-        const conversationHistory = [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: typeof m.content === 'string' ? m.content : ''
-        })).filter(m => m.content);
+        setMessages(currentMessages);
+        if (!text) setInput('');
 
         try {
-            const res = await fetch('/api/assistant', {
+            // we pass text content of previous messages, ignoring the initial ReactNode UI wrapper
+            const apiMessages = currentMessages.map(m => {
+                let textContent = '';
+                if (typeof m.content === 'string') {
+                    textContent = m.content;
+                } else {
+                    textContent = m.role === 'assistant' ? '(Assistant provided predefined prompts or UI elements)' : '';
+                }
+                return { role: m.role, content: textContent };
+            }).filter(m => m.content !== ''); // optionally filter empty messages if needed
+
+            // We add an empty loading message locally if we want, or just wait for response.
+            // A simple implementation without adding a complex "loading..." UI element.
+
+            const response = await fetch('/api/assistant', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: conversationHistory })
+                body: JSON.stringify({ messages: apiMessages })
             });
 
-            const data = await res.json();
-            if (res.ok && data.reply) {
-                setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+            if (response.ok) {
+                const data = await response.json();
+
+                // Process the reply to handle newlines 
+                const replyContent = data.reply.split('\n').map((line: string, i: number) => (
+                    <React.Fragment key={i}>
+                        {line}
+                        {i !== data.reply.split('\n').length - 1 && <br />}
+                    </React.Fragment>
+                ));
+
+                setMessages(prev => [...prev, { role: 'assistant', content: replyContent }]);
             } else {
-                setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. ' + (data.error || '') }]);
+                setMessages(prev => [...prev, { role: 'assistant', content: "I encountered an error connecting to my servers. Please try again later." }]);
             }
         } catch (error) {
-            console.error(error);
-            setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error connecting to the AI.' }]);
-        } finally {
-            setIsLoading(false);
+            setMessages(prev => [...prev, { role: 'assistant', content: "An error occurred. Please try again." }]);
         }
     };
 
@@ -131,7 +165,7 @@ export default function AIAgentPanel() {
                                             ? 'bg-indigo-600 text-white rounded-tr-none'
                                             : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none'
                                             }`}>
-                                            {typeof msg.content === 'string' ? msg.content : msg.content}
+                                            {msg.content}
                                         </div>
                                     </div>
                                 </motion.div>
@@ -150,8 +184,7 @@ export default function AIAgentPanel() {
                                         onChange={(e) => setInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                         placeholder="Ask about school metrics..."
-                                        disabled={isLoading}
-                                        className="flex-1 bg-transparent border-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-0 py-2 disabled:opacity-50"
+                                        className="flex-1 bg-transparent border-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-0 py-2"
                                     />
                                     <div className="flex items-center gap-1">
                                         <Button
@@ -166,17 +199,17 @@ export default function AIAgentPanel() {
                                         <Button
                                             size="icon"
                                             onClick={() => handleSend()}
-                                            disabled={!input.trim() || isLoading}
-                                            className="h-9 w-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 disabled:bg-indigo-400"
+                                            disabled={!input.trim()}
+                                            className="h-9 w-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
                                         >
-                                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                            <Send className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center justify-center gap-1.5 mt-3">
                                 <Command className="h-3 w-3 text-slate-400" />
-                                <p className="text-[10px] text-slate-400 font-medium">Powered by Gemini AI</p>
+                                <p className="text-[10px] text-slate-400 font-medium">Powered by Edmento Llama 3</p>
                             </div>
                         </div>
                     </motion.div>

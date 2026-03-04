@@ -6,7 +6,7 @@ import { AIProvider } from '@/context/AIContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
-        <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AIProvider>
                 {children}
             </AIProvider>

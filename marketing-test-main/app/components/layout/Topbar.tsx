@@ -1,7 +1,7 @@
 'use client';
 
 import { Bell, Sparkle } from 'lucide-react';
-
+import ThemeToggle from '@/app/components/ui/ThemeToggle';
 import UserDropdown from '@/app/auth/components/UserDropdown';
 import MenuDropdown from '@/app/components/ui/MenuDropdown';
 import { useAI } from '@/context/AIContext';
@@ -22,7 +22,7 @@ export default function Topbar({ toggleSidebar, isSidebarOpen }: TopbarProps) {
             </div>
 
             <div className="flex items-center gap-3">
-
+                <ThemeToggle />
 
                 <button
                     onClick={toggleAgent}
