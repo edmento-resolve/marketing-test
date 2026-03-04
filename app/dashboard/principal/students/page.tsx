@@ -285,7 +285,8 @@ export default function StudentsPage() {
                                 {activeClass?.divisions.map((div: any) => (
                                     <div
                                         key={div.id}
-                                        className="p-5 rounded-[22px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group"
+                                        onClick={() => router.push(`/dashboard/principal/students/${div.id}`)}
+                                        className="p-5 rounded-[22px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group cursor-pointer"
                                     >
                                         <div className="flex items-center justify-between mb-4">
                                             <h4 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">

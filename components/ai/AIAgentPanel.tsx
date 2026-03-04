@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Sparkles, Bot, User, Trash2, Command, Search, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useAI } from '@/context/AIContext';
 import { schoolData } from '@/data/school-data';
 import { Button } from '@/components/ui/button';
@@ -131,7 +132,29 @@ export default function AIAgentPanel() {
                                             ? 'bg-indigo-600 text-white rounded-tr-none'
                                             : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none'
                                             }`}>
-                                            {typeof msg.content === 'string' ? msg.content : msg.content}
+                                            {typeof msg.content === 'string' ? (
+                                                <div className="markdown-content">
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            h3: ({ ...props }) => <h3 className="font-bold text-base mt-4 mb-2 first:mt-0 text-indigo-700 dark:text-indigo-400" {...props} />,
+                                                            h4: ({ ...props }) => <h4 className="font-bold text-sm mt-3 mb-1 text-slate-900 dark:text-white" {...props} />,
+                                                            p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                                            ul: ({ ...props }) => <ul className="list-disc ml-6 mb-2 space-y-1" {...props} />,
+                                                            ol: ({ ...props }) => <ol className="list-decimal ml-6 mb-2 space-y-1" {...props} />,
+                                                            li: ({ ...props }) => <li className="marker:text-indigo-400" {...props} />,
+                                                            strong: ({ ...props }) => <strong className="font-extrabold text-indigo-600 dark:text-indigo-400" {...props} />,
+                                                            hr: ({ ...props }) => <hr className="my-4 border-slate-100 dark:border-slate-700" {...props} />,
+                                                            table: ({ ...props }) => <div className="overflow-x-auto my-3 rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-xs border-collapse" {...props} /></div>,
+                                                            th: ({ ...props }) => <th className="bg-slate-50 dark:bg-slate-800/50 p-2 text-left font-bold border-b border-slate-200 dark:border-slate-700" {...props} />,
+                                                            td: ({ ...props }) => <td className="p-2 border-b border-slate-100 dark:border-slate-800 last:border-0" {...props} />,
+                                                        }}
+                                                    >
+                                                        {msg.content}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            ) : (
+                                                msg.content
+                                            )}
                                         </div>
                                     </div>
                                 </motion.div>
