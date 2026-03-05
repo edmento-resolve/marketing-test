@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import { useAI } from '@/context/AIContext';
 import { schoolData } from '@/data/school-data';
 import { Button } from '@/components/ui/button';
+import AIChart from './AIChart';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -84,7 +85,7 @@ export default function AIAgentPanel() {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed top-0 right-0 h-full w-full max-w-md bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border-l border-white/20 dark:border-slate-800/40 shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[60] flex flex-col overflow-hidden"
+                        className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border-l border-white/20 dark:border-slate-800/40 shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[60] flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="px-6 py-6 border-b border-indigo-500/10 flex items-center justify-between bg-gradient-to-r from-indigo-500/5 to-transparent">
@@ -147,6 +148,33 @@ export default function AIAgentPanel() {
                                                             table: ({ ...props }) => <div className="overflow-x-auto my-3 rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-xs border-collapse" {...props} /></div>,
                                                             th: ({ ...props }) => <th className="bg-slate-50 dark:bg-slate-800/50 p-2 text-left font-bold border-b border-slate-200 dark:border-slate-700" {...props} />,
                                                             td: ({ ...props }) => <td className="p-2 border-b border-slate-100 dark:border-slate-800 last:border-0" {...props} />,
+                                                            pre: ({ children, ...props }: any) => {
+                                                                // If the child code block is an AIChart, unwrap it from the `pre` styles
+                                                                const isChart = React.Children.toArray(children).some(
+                                                                    (child: any) => child?.props?.jsonStr !== undefined || child?.type?.name === 'AIChart'
+                                                                );
+                                                                if (isChart) {
+                                                                    return <div className="w-full">{children}</div>;
+                                                                }
+                                                                return <pre className="p-3 rounded-xl bg-slate-900 text-slate-50 overflow-x-auto text-xs my-3 leading-relaxed shadow-sm font-mono border border-slate-800" {...props}>{children}</pre>;
+                                                            },
+                                                            code: ({ node, inline, className, children, ...props }: any) => {
+                                                                const match = /language-(\w+)/.exec(className || '');
+                                                                const content = String(children).replace(/\n$/, '');
+
+                                                                // Check explicitly for chart-json or if the content looks like our chart JSON structure
+                                                                const isChartJson = (match && match[1] === 'chart-json') ||
+                                                                    (!inline && content.includes('"type":') && content.includes('"data":') && content.includes('"config":'));
+
+                                                                if (isChartJson) {
+                                                                    return <AIChart jsonStr={content} />;
+                                                                }
+                                                                return (
+                                                                    <code className={className} {...props}>
+                                                                        {children}
+                                                                    </code>
+                                                                );
+                                                            }
                                                         }}
                                                     >
                                                         {msg.content}
