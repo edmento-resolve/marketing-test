@@ -199,8 +199,18 @@ export default function HolisticReportPage() {
                                                     </TableCell>
                                                 ))}
                                                 <TableCell className="px-6 py-4 text-right">
-                                                    <button className="inline-flex items-center gap-1.5 text-slate-400 hover:text-indigo-600 text-[13px] font-semibold transition-colors">
-                                                        Report <ChevronRight className="h-3.5 w-3.5" />
+                                                    <button className="group relative inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-50/50 to-purple-50/50 hover:from-indigo-100/50 hover:to-purple-100/50 transition-all duration-300 border border-indigo-100/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 overflow-hidden">
+                                                        <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
+                                                        <span
+                                                            className="relative text-[13px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"
+                                                            style={{
+                                                                backgroundSize: '200% auto',
+                                                                animation: 'gradient-xy 3s ease infinite'
+                                                            }}
+                                                        >
+                                                            Report
+                                                        </span>
+                                                        <Brain className="relative h-3.5 w-3.5 text-purple-600 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
                                                     </button>
                                                 </TableCell>
                                             </TableRow>
