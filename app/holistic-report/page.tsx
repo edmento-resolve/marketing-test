@@ -47,16 +47,16 @@ import {
 // Unified Color Palette: Only Red for Beginner (Low performance), Slates/Indigos for others
 const LEVEL_CONFIG: Record<SkillLevel, { textCls: string; dot: string }> = {
     'Beginner': { textCls: 'text-rose-500 font-bold', dot: 'bg-rose-500' },
-    'Progressing': { textCls: 'text-slate-400 font-medium', dot: 'bg-slate-200' },
-    'Proficient': { textCls: 'text-slate-400 font-medium', dot: 'bg-slate-200' },
-    'Advanced': { textCls: 'text-slate-400 font-medium', dot: 'bg-slate-200' },
+    'Progressing': { textCls: 'text-amber-500 font-bold', dot: 'bg-amber-500' },
+    'Proficient': { textCls: 'text-indigo-500 font-bold', dot: 'bg-indigo-500' },
+    'Advanced': { textCls: 'text-emerald-500 font-bold', dot: 'bg-emerald-500' },
     'Not Assessed': { textCls: 'text-slate-300 font-medium', dot: 'bg-slate-100' },
 };
 
 export default function HolisticReportPage() {
     const router = useRouter();
     const { classes: MOCK_CLASSES } = useHolisticStore();
-    
+
     const [selectedClassId, setSelectedClassId] = useState(MOCK_CLASSES.length > 0 ? MOCK_CLASSES[0].id : '');
     const [selectedDomainId, setSelectedDomainId] = useState('academic');
 

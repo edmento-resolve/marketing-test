@@ -77,10 +77,10 @@ const INITIAL_CLASSES: ClassData[] = Object.values(
                 ]
             };
         }
-        
+
         // Randomly assign some initial evaluations or leave them blank
         const mockEvals: Record<string, SkillLevel> = {};
-        
+
         acc[classId].students.push({
             id: student.id,
             name: student.name,
@@ -89,7 +89,7 @@ const INITIAL_CLASSES: ClassData[] = Object.values(
             evaluations: mockEvals,
             code: student.id,
         });
-        
+
         return acc;
     }, {} as Record<string, ClassData>)
 );
@@ -109,14 +109,14 @@ export function useHolisticStore() {
             localStorage.setItem('holistic-data-store-v4', JSON.stringify(INITIAL_CLASSES));
             setClasses(INITIAL_CLASSES);
         }
-        
+
         // Listen for storage events (if user updates in another tab)
         const handleStorage = (e: StorageEvent) => {
             if (e.key === 'holistic-data-store-v4' && e.newValue) {
                 setClasses(JSON.parse(e.newValue));
             }
         };
-        
+
         // Listen for manual same-tab sync events to bypass Next.js Client Router Cache bugs
         const handleCustomSync = () => {
             const storedData = localStorage.getItem('holistic-data-store-v4');
@@ -125,7 +125,7 @@ export function useHolisticStore() {
 
         window.addEventListener('storage', handleStorage);
         window.addEventListener('local-storage-sync', handleCustomSync);
-        
+
         return () => {
             window.removeEventListener('storage', handleStorage);
             window.removeEventListener('local-storage-sync', handleCustomSync);
@@ -150,9 +150,9 @@ export function useHolisticStore() {
         });
     }, []);
 
-    return { 
-        classes: classesToUse, 
+    return {
+        classes: classesToUse,
         allStudents,
-        updateEvaluations 
+        updateEvaluations
     };
 }
