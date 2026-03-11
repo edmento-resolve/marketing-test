@@ -173,7 +173,7 @@ export default function NewMeetingModal({ trigger }: NewMeetingModalProps) {
                                     <SelectTrigger className="h-14 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl font-bold shadow-inner px-6 transition-all focus:ring-4 focus:ring-indigo-500/10">
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                    <SelectContent className="rounded-2xl border-none shadow-2xl bg-white">
                                         <SelectItem value="online" className="py-3 px-4 rounded-xl cursor-pointer">
                                             <div className="flex items-center gap-3">
                                                 <Video className="h-4 w-4 text-indigo-500" />

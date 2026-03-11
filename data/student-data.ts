@@ -106,7 +106,7 @@ export const grade10StudentsData = [
     },
     {
         "id": "STU1002",
-        "name": "Saanvi Yadav",
+        "name": "Aarav Sharma",
         "grade": "10",
         "section": "A",
         "attendance": {

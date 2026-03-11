@@ -169,7 +169,7 @@ export default function LeaveModal({
                                     <SelectTrigger className="h-12 w-full bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:ring-red-500/20 focus:border-red-500">
                                         <SelectValue placeholder="Choose a teacher..." />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="bg-white">
                                         {teachers.map((teacher) => (
                                             <SelectItem
                                                 key={teacher.id}

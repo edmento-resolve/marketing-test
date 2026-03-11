@@ -107,7 +107,7 @@ export default function GenerationResult({ result }: GenerationResultProps) {
                                     <SelectValue placeholder="Download Paper" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white">
                                 <SelectItem value="pdf" className="font-bold">Professional PDF</SelectItem>
                                 <SelectItem value="docx" className="font-bold">Word Document</SelectItem>
                                 <SelectItem value="png" className="font-bold">High-Res PNGs</SelectItem>

@@ -25,6 +25,13 @@ export default function Home() {
           >
             <span className="text-lg">Principal Dashboard</span>
           </Link>
+
+          <Link
+            href="/holistic-report"
+            className="group relative inline-flex h-16 items-center justify-center overflow-hidden rounded-full bg-emerald-600 px-10 font-medium text-white shadow-lg shadow-slate-500/30 transition-all hover:scale-105 hover:bg-emerald-800 hover:shadow-slate-500/50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
+          >
+            <span className="text-lg">Holistic Report</span>
+          </Link>
         </div>
       </main>
     </div>
