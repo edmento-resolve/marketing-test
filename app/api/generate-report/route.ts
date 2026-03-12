@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
         console.log(JSON.stringify(studentData, null, 2));
 
         // Forward this merged payload to the external AI service
-        const response = await fetch('${process.env.backend-url}/generate-remarks', {
+        const response = await fetch(`${process.env.BACKEND_URL}/generate-remarks`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
         }
 
         const data = await response.json();
-        
+
         // Fix 2.3: Log the response body before sending it to client
         console.log("--- RECEIVED FROM FASTAPI ---");
         console.log(JSON.stringify(data, null, 2));
-        
+
         return NextResponse.json(data);
     } catch (error) {
         // Fix 2.2: Comprehensive try-catch logging
