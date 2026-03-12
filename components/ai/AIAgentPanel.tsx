@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Bot, User, Trash2, Command, Search, Loader2 } from 'lucide-react';
+import { X, Send, Sparkles, Bot, User, Trash2, Command, Search, Loader2, ArrowRight, Maximize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAI } from '@/context/AIContext';
 import { schoolData } from '@/data/school-data';
@@ -21,6 +21,7 @@ export default function AIAgentPanel() {
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: "Hello Principal! I'm your Edmento AI Assistant. I can help you analyze school data, performance trends, and syllabus insights. What would you like to know?" }
     ]);
+    const [activeMsgIndex, setActiveMsgIndex] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -54,7 +55,11 @@ export default function AIAgentPanel() {
 
             const data = await res.json();
             if (res.ok && data.reply) {
-                setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+                setMessages(prev => {
+                    const nextMsgs: Message[] = [...prev, { role: 'assistant', content: data.reply }];
+                    setActiveMsgIndex(nextMsgs.length - 1);
+                    return nextMsgs;
+                });
             } else {
                 setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. ' + (data.error || '') }]);
             }
@@ -76,8 +81,66 @@ export default function AIAgentPanel() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={closeAgent}
-                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 overflow-hidden"
+                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] overflow-hidden"
                     />
+
+                    {/* Left Popup for Content */}
+                    <AnimatePresence>
+                        {activeMsgIndex !== null && messages[activeMsgIndex] && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                                animate={{ opacity: 1, x: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="fixed top-6 bottom-6 right-[424px] w-[calc(100vw-448px)] max-w-4xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl z-[70] border border-white/40 dark:border-slate-800/60 overflow-hidden flex flex-col"
+                            >
+                                <div className="px-6 py-4 border-b border-indigo-500/10 flex justify-between items-center bg-gradient-to-r from-indigo-500/5 to-transparent">
+                                    <h3 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        <Bot className="h-5 w-5 text-indigo-500" />
+                                        AI Response Details
+                                    </h3>
+                                    <Button variant="ghost" size="icon" onClick={() => setActiveMsgIndex(null)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <div className="p-8 overflow-y-auto flex-1 scrollbar-none">
+                                    <div className="prose dark:prose-invert max-w-none markdown-content">
+                                        <ReactMarkdown
+                                            // @ts-ignore
+                                            components={{
+                                                h3: ({ ...props }) => <h3 className="font-bold text-base mt-4 mb-2 first:mt-0 text-indigo-700 dark:text-indigo-400" {...props} />,
+                                                h4: ({ ...props }) => <h4 className="font-bold text-sm mt-3 mb-1 text-slate-900 dark:text-white" {...props} />,
+                                                p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                                ul: ({ ...props }) => <ul className="list-disc ml-6 mb-2 space-y-1" {...props} />,
+                                                ol: ({ ...props }) => <ol className="list-decimal ml-6 mb-2 space-y-1" {...props} />,
+                                                li: ({ ...props }) => <li className="marker:text-indigo-400" {...props} />,
+                                                strong: ({ ...props }) => <strong className="font-extrabold text-indigo-600 dark:text-indigo-400" {...props} />,
+                                                hr: ({ ...props }) => <hr className="my-4 border-slate-100 dark:border-slate-700" {...props} />,
+                                                table: ({ ...props }) => <div className="overflow-x-auto my-3 rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-sm border-collapse" {...props} /></div>,
+                                                th: ({ ...props }) => <th className="bg-slate-50 dark:bg-slate-800/50 p-2 text-left font-bold border-b border-slate-200 dark:border-slate-700" {...props} />,
+                                                td: ({ ...props }) => <td className="p-2 border-b border-slate-100 dark:border-slate-800 last:border-0" {...props} />,
+                                                pre: ({ children, ...props }: any) => {
+                                                    const isChart = React.Children.toArray(children).some(
+                                                        (child: any) => child?.props?.jsonStr !== undefined || child?.type?.name === 'AIChart'
+                                                    );
+                                                    if (isChart) return <div className="w-full">{children}</div>;
+                                                    return <pre className="p-3 rounded-xl bg-slate-900 text-slate-50 overflow-x-auto text-sm my-3 leading-relaxed shadow-sm font-mono border border-slate-800" {...props}>{children}</pre>;
+                                                },
+                                                code: ({ node, inline, className, children, ...props }: any) => {
+                                                    const match = /language-(\w+)/.exec(className || '');
+                                                    const content = String(children).replace(/\n$/, '');
+                                                    const isChartJson = (match && match[1] === 'chart-json') || (!inline && content.includes('"type":') && content.includes('"data":') && content.includes('"config":'));
+                                                    if (isChartJson) return <AIChart jsonStr={content} />;
+                                                    return <code className={className} {...props}>{children}</code>;
+                                                }
+                                            }}
+                                        >
+                                            {messages[activeMsgIndex].content as string}
+                                        </ReactMarkdown>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Panel */}
                     <motion.div
@@ -85,7 +148,7 @@ export default function AIAgentPanel() {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border-l border-white/20 dark:border-slate-800/40 shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[60] flex flex-col overflow-hidden"
+                        className="fixed top-0 right-0 h-full w-full max-w-[400px] bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border-l border-white/20 dark:border-slate-800/40 shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[70] flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="px-6 py-6 border-b border-indigo-500/10 flex items-center justify-between bg-gradient-to-r from-indigo-500/5 to-transparent">
@@ -134,52 +197,55 @@ export default function AIAgentPanel() {
                                             : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none'
                                             }`}>
                                             {typeof msg.content === 'string' ? (
-                                                <div className="markdown-content">
-                                                    <ReactMarkdown
-                                                        components={{
-                                                            h3: ({ ...props }) => <h3 className="font-bold text-base mt-4 mb-2 first:mt-0 text-indigo-700 dark:text-indigo-400" {...props} />,
-                                                            h4: ({ ...props }) => <h4 className="font-bold text-sm mt-3 mb-1 text-slate-900 dark:text-white" {...props} />,
-                                                            p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                                                            ul: ({ ...props }) => <ul className="list-disc ml-6 mb-2 space-y-1" {...props} />,
-                                                            ol: ({ ...props }) => <ol className="list-decimal ml-6 mb-2 space-y-1" {...props} />,
-                                                            li: ({ ...props }) => <li className="marker:text-indigo-400" {...props} />,
-                                                            strong: ({ ...props }) => <strong className="font-extrabold text-indigo-600 dark:text-indigo-400" {...props} />,
-                                                            hr: ({ ...props }) => <hr className="my-4 border-slate-100 dark:border-slate-700" {...props} />,
-                                                            table: ({ ...props }) => <div className="overflow-x-auto my-3 rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-xs border-collapse" {...props} /></div>,
-                                                            th: ({ ...props }) => <th className="bg-slate-50 dark:bg-slate-800/50 p-2 text-left font-bold border-b border-slate-200 dark:border-slate-700" {...props} />,
-                                                            td: ({ ...props }) => <td className="p-2 border-b border-slate-100 dark:border-slate-800 last:border-0" {...props} />,
-                                                            pre: ({ children, ...props }: any) => {
-                                                                // If the child code block is an AIChart, unwrap it from the `pre` styles
-                                                                const isChart = React.Children.toArray(children).some(
-                                                                    (child: any) => child?.props?.jsonStr !== undefined || child?.type?.name === 'AIChart'
-                                                                );
-                                                                if (isChart) {
-                                                                    return <div className="w-full">{children}</div>;
+                                                msg.role === 'assistant' && idx > 0 ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="text-sm line-clamp-3 text-slate-600 dark:text-slate-300">
+                                                            {msg.content.replace(/```[\s\S]*?```/g, '[ Chart/Table Data... ]')}
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setActiveMsgIndex(idx)}
+                                                            className="mt-1 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 w-full flex items-center justify-between"
+                                                        >
+                                                            View Full Response <ArrowRight className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="markdown-content">
+                                                        <ReactMarkdown
+                                                            components={{
+                                                                h3: ({ ...props }) => <h3 className="font-bold text-base mt-4 mb-2 first:mt-0 text-indigo-700 dark:text-indigo-400" {...props} />,
+                                                                h4: ({ ...props }) => <h4 className="font-bold text-sm mt-3 mb-1 text-slate-900 dark:text-white" {...props} />,
+                                                                p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                                                ul: ({ ...props }) => <ul className="list-disc ml-6 mb-2 space-y-1" {...props} />,
+                                                                ol: ({ ...props }) => <ol className="list-decimal ml-6 mb-2 space-y-1" {...props} />,
+                                                                li: ({ ...props }) => <li className="marker:text-indigo-400" {...props} />,
+                                                                strong: ({ ...props }) => <strong className="font-extrabold text-indigo-600 dark:text-indigo-400" {...props} />,
+                                                                hr: ({ ...props }) => <hr className="my-4 border-slate-100 dark:border-slate-700" {...props} />,
+                                                                table: ({ ...props }) => <div className="overflow-x-auto my-3 rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-xs border-collapse" {...props} /></div>,
+                                                                th: ({ ...props }) => <th className="bg-slate-50 dark:bg-slate-800/50 p-2 text-left font-bold border-b border-slate-200 dark:border-slate-700" {...props} />,
+                                                                td: ({ ...props }) => <td className="p-2 border-b border-slate-100 dark:border-slate-800 last:border-0" {...props} />,
+                                                                pre: ({ children, ...props }: any) => {
+                                                                    const isChart = React.Children.toArray(children).some(
+                                                                        (child: any) => child?.props?.jsonStr !== undefined || child?.type?.name === 'AIChart'
+                                                                    );
+                                                                    if (isChart) return <div className="w-full">{children}</div>;
+                                                                    return <pre className="p-3 rounded-xl bg-slate-900 text-slate-50 overflow-x-auto text-xs my-3 leading-relaxed shadow-sm font-mono border border-slate-800" {...props}>{children}</pre>;
+                                                                },
+                                                                code: ({ node, inline, className, children, ...props }: any) => {
+                                                                    const match = /language-(\w+)/.exec(className || '');
+                                                                    const content = String(children).replace(/\n$/, '');
+                                                                    const isChartJson = (match && match[1] === 'chart-json') || (!inline && content.includes('"type":') && content.includes('"data":') && content.includes('"config":'));
+                                                                    if (isChartJson) return <AIChart jsonStr={content} />;
+                                                                    return <code className={className} {...props}>{children}</code>;
                                                                 }
-                                                                return <pre className="p-3 rounded-xl bg-slate-900 text-slate-50 overflow-x-auto text-xs my-3 leading-relaxed shadow-sm font-mono border border-slate-800" {...props}>{children}</pre>;
-                                                            },
-                                                            code: ({ node, inline, className, children, ...props }: any) => {
-                                                                const match = /language-(\w+)/.exec(className || '');
-                                                                const content = String(children).replace(/\n$/, '');
-
-                                                                // Check explicitly for chart-json or if the content looks like our chart JSON structure
-                                                                const isChartJson = (match && match[1] === 'chart-json') ||
-                                                                    (!inline && content.includes('"type":') && content.includes('"data":') && content.includes('"config":'));
-
-                                                                if (isChartJson) {
-                                                                    return <AIChart jsonStr={content} />;
-                                                                }
-                                                                return (
-                                                                    <code className={className} {...props}>
-                                                                        {children}
-                                                                    </code>
-                                                                );
-                                                            }
-                                                        }}
-                                                    >
-                                                        {msg.content}
-                                                    </ReactMarkdown>
-                                                </div>
+                                                            }}
+                                                        >
+                                                            {msg.content}
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                )
                                             ) : (
                                                 msg.content
                                             )}
