@@ -62,7 +62,7 @@ export default function RecordDataPage() {
     return (
         <div>
             <div className="relative z-10 min-h-screen px-6 py-12 text-slate-900">
-                <div className="max-w-7xl mx-auto space-y-10">
+                <div className="max-w-7xl bg-red-700 mx-auto space-y-10">
 
                     {/* Header Section */}
                     <section className="rounded-[32px] border border-white/60 bg-white/80 dark:bg-slate-900/80 shadow-[0_20px_60px_rgba(15,23,42,0.07)] backdrop-blur-3xl overflow-hidden">
