@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import MyClassBackground from "@/components/MyClassBackground";
 import { FileText, ArrowLeft, Plus, X, ChevronRight, ChevronLeft, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { BasicDetailsStep } from "../components/BasicDetailsStep";
@@ -425,7 +424,7 @@ export default function QuestionPaperPage() {
   const questionTypeOptions = ["MCQ", "Short", "Long"];
 
   return (
-    <MyClassBackground>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="relative z-10 min-h-screen px-6 py-6 text-slate-900 dark:text-slate-100">
         {isLoading && <QuestionPaperLoading logs={streamingLogs} />}
 
@@ -966,7 +965,7 @@ export default function QuestionPaperPage() {
           )}
         </div>
       </div>
-    </MyClassBackground>
+    </div>
   );
 }
 

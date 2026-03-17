@@ -48,7 +48,10 @@ import {
     BookCopy,
     FileText,
     ArrowLeftRight,
-    Target
+    Target,
+    DollarSign,
+    Wallet,
+    ArrowLeft
 } from "lucide-react";
 import Logo from '@/app/components/Logo';
 
@@ -97,7 +100,10 @@ const iconMap = {
     BusFront,
     UserCircle2,
     Notebook,
-    UsersRound
+    UsersRound,
+    DollarSign,
+    Wallet,
+    ArrowLeft
 };
 
 export interface SidebarItem {
@@ -117,6 +123,16 @@ const principalItems: SidebarItem[] = [
     { label: 'Governance & Policies', href: '/dashboard/principal/governance', icon: 'SwatchBook' },
 ];
 
+const accountsItems: SidebarItem[] = [
+    { label: 'Account Home', href: '/dashboard/accounts', icon: 'Home' },
+    { label: 'Fees', href: '/dashboard/accounts/fees', icon: 'DollarSign' },
+    { label: 'Collections', href: '/dashboard/accounts/collections', icon: 'Wallet' },
+    { label: 'Record Payment', href: '/dashboard/accounts/record-payment', icon: 'ClipboardCheck' },
+    { label: 'Reports', href: '/dashboard/accounts/reports', icon: 'BarChart' },
+    { label: 'Payment Groups', href: '/dashboard/accounts/payment-groups', icon: 'UsersRound' },
+    { label: 'Settings', href: '/dashboard/accounts/settings', icon: 'Settings' },
+];
+
 export default function Sidebar({
     onHoverChange,
     isMini = false,
@@ -125,7 +141,8 @@ export default function Sidebar({
     isMini?: boolean;
 }) {
     const pathname = usePathname();
-    const items = principalItems;
+    const isAccounts = pathname.startsWith('/dashboard/accounts');
+    const items = isAccounts ? accountsItems : principalItems;
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });

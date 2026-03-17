@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -12,17 +12,20 @@ import {
 import { LogOut, Settings, User, Laptop, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function UserDropdown() {
     const { setTheme, theme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
+    const { user, signOut } = useAuth();
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        await signOut();
         router.replace('/');
     };
 
@@ -42,10 +45,10 @@ export default function UserDropdown() {
                 </button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuContent align="end" className="w-60 bg-white">
                 <DropdownMenuLabel className="text-slate-900 dark:text-white font-medium text-sm flex items-center gap-2 px-2">
                     <User size={14} />
-                    principal@school.com
+                    {user?.email ?? 'admin@edmento.in'}
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
@@ -82,9 +85,9 @@ export default function UserDropdown() {
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 w-full cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 w-full cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
                     <LogOut size={14} />
-                    Logout
+                    Sign Out
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

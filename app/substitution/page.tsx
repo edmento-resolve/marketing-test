@@ -19,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AIButton from "../components/ui/AIButton";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { toast } from "sonner";
-import MyClassBackground from '@/components/MyClassBackground';
 import clsx from 'clsx';
 import {
     fetchTimetable,
@@ -632,7 +631,7 @@ export default function LeaveManagementPage() {
 
 
     return (
-        <MyClassBackground>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             <div className="relative z-10 min-h-screen px-6 py-6 text-slate-900 dark:text-slate-100">
                 <div className="max-w-[1920px] mx-auto space-y-8">
 
@@ -1059,6 +1058,6 @@ export default function LeaveManagementPage() {
                     onSuccess={handleLeaveSuccess}
                 />
             </div>
-        </MyClassBackground>
+            </div>
     );
 }
